@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large files
+backup/
+*.shelve
+
+# My temp files
+Experiments.py
+ParallelTesting.py
+data/dictionary/words_tmp.txt
+
+# Project files
+.idea/
+.DS_Store
