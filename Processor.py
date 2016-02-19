@@ -14,11 +14,8 @@ stop_words = stopwords.words("english")
 
 filepath = "./tempfiles/"
 
-''' Shelve files delclaration'''
+#Shelve files delclaration
 all_info = shelve.open('all_info.shelve', writeback=True)
-
-''' Named tuples'''
-PageInfo = namedtuple('PageInfo', 'important, normal, links, referral_count')
 
 class Processor(object):
     """
