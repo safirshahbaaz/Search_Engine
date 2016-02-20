@@ -14,18 +14,21 @@ class Indexer(object):
         '''all_info[url] = (important, normal, links, referral_count)'''
         self.total_docs = len(self.all_info)
         print(self.total_docs)
+        # i = 0
         # for url in self.all_info:
         # 	print url, self.all_info[url]
         # 	# print self.all_info[url][0]
-        # 	break
+        # 	if i>2:
+        # 		break
+        # 	i += 1
         self.important_inverted_index = shelve.open('imp_inverted_index.shelve', writeback=True)
-        print len(self.important_inverted_index)
-        i = 1
-        for word in self.important_inverted_index:
-            print word, " - ", self.important_inverted_index[word]
-            if i > 10:
-                break
-            i += 1
+        print(len(self.important_inverted_index))
+        # i = 1
+        # for word in self.important_inverted_index:
+        #     print word, " - ", self.important_inverted_index[word]
+        #     if i > 2:
+        #         break
+        #     i += 1
 
     def update_frwd_index(self):
         """
@@ -133,6 +136,6 @@ if __name__ == '__main__':
     ind.load_shelve()
     # ind.update_frwd_index()
     # ind.create_inverted_index()
-    ind.update_inverted_index()
+    # ind.update_inverted_index()
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
     # print tf, loc
