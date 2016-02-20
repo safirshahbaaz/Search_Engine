@@ -10,43 +10,50 @@ class DatabaseWriter(object):
     def accessDatabase(self, database_name = 'default'):
         return self.client['InvertedIndex']
 
-    def accessCollection(self, db):
-        return db['Indexes']
+    ''' Forward Index Database Manipulation functions '''
 
-    def writeToDatabase(self, collection, index, documents):
-        collection.insert_one({'index': index, 'documents': documents})
+    def accessForwardIndexCollection(self, db):
+        return db['ForwardIndex']
 
-    def retrieveFromDatabase(self, collection, query):
-        return collection.find({"index": query})
+    def writeToForwardIndexDatabase(self, collection, url, contents):
+        collection.insert_one({'url': url, 'contents': contents})
 
-    def deleteFromDatabase(self, collection, index):
-        collection.delete_many({"index": index})
+    def retrieveFromForwardIndexDatabase(self, collection, url):
+        return collection.find({'url': url})
 
-    def updateDatabase(self, collection, index, documents):
-        collection.update_one({"index": index}, {"$set": {"documents": documents}})
+    def deleteFromForwardIndexDatabase(self, collection, url):
+        collection.delete_many({'url': url})
+
+    def updateForwardIndexDatabase(self, collection, url, contents):
+        collection.update_one({'url': url}, {"$set": {"contents": contents}})
+
+    ''' ------------------------------------------------------------------ '''
+
+    ''' Word Frequency Database manipulation functions '''
+
+    def accessWordFrequencyCollection(self, db):
+        return db['WordFrequency']
+
+    def writeToWordFrequencyDatabase(self, collection, word, contents):
+        collection.insert_one({'word': word, 'contents': contents})
+
+    def retrieveFromWordFrequencyDatabase(self, collection, word):
+        return collection.find({'word': word})
+
+    def deleteFromWordFrequencyDatabase(self, collection, word):
+        collection.delete_many({'word': word})
+
+    def updateWordFrequencyDatabase(self, collection, word, contents):
+        collection.update_one({'word': word}, {"$set": {"contents": contents}})
 
 if __name__ == '__main__':
     client = DatabaseWriter()
     database = client.accessDatabase()
-    collections = client.accessCollection(database)
-    client.writeToDatabase(collections, 'Safir', 'There is no fate but what we make')
-    client.writeToDatabase(collections, 'xyz', 'Nothing is true')
-    client.writeToDatabase(collections, 'pqr', 'Everything is permitted')
-    client.writeToDatabase(collections, 'jkl', 'What have you done?')
-    for elements in client.retrieveFromDatabase(collections, 'xyz'):
-        print elements['documents']
 
-    client.updateDatabase(collections, "xyz", "I just changed you")
+    forward_index_collection = client.accessForwardIndexCollection(database)
 
-    for elements in client.retrieveFromDatabase(collections, 'xyz'):
-        print elements['documents']
+    client.writeToForwardIndexDatabase(forward_index_collection, 'http://www.ics.uci.edu/~yuxiaow1',
+                                       (['yuxiao', 'website'], ['current', 'position', 'phd', 'student', 'department', 'statistics', 'university', 'california', 'irvine', 'research', 'interest', 'spatio', 'temporal', 'data', 'modeling', 'time', 'series', 'contact', 'yuxiaow1', 'uci', 'edu', 'phd', 'progress', 'department', 'statistics', 'uc', 'irvine', 'sept', '2012', 'present', 'b', 'physics', '2010', 'university', 'science', 'technology', 'china', 'ustc', 'cortical', 'source', 'reconstruction', 'brain', 'connectivity', 'study', 'uisng', 'eeg', 'data'], [], 1))
 
-    client.deleteFromDatabase(collections, 'xyz')
-
-    for elements in client.retrieveFromDatabase(collections, 'xyz'):
-        print elements['documents']
-
-
-
-    for elements in client.retrieveFromDatabase(collections, 'xyz'):
-        print elements['documents']
+    for elements in client.retrieveFromForwardIndexDatabase(forward_index_collection, 'http://www.ics.uci.edu/~yuxiaow1'):
+        print elements['contents']
