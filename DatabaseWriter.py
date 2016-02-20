@@ -46,6 +46,9 @@ class DatabaseWriter(object):
     def retrieveFromInvertedIndexDatabase(self, collection, word):
         return collection.find({'word': word})
 
+    def retrieveAllFromInvertedIndexDatabase(self, collection):
+        return collection.find()  
+
     def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
 
