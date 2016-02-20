@@ -37,8 +37,8 @@ class DatabaseWriter(object):
 
     ''' Word Frequency Database manipulation functions '''
 
-    def accessInvertedIndexCollection(self, db):
-        return db['InvertedIndex']
+    def accessInvertedIndexCollection(self, db, collection_name):
+        return db[collection_name]
 
     def writeToInvertedIndexDatabase(self, collection, word, contents):
         collection.insert_one({'word': word, 'contents': contents})

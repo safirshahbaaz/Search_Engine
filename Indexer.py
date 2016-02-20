@@ -2,6 +2,7 @@ import shelve
 from math import log10
 from collections import namedtuple
 import DatabaseWriter as dw
+import cProfile
 
 # PageInfo = namedtuple('PageInfo', 'important, normal, links, referral_count')
 
@@ -10,7 +11,8 @@ class Indexer(object):
         self.client = dw.DatabaseWriter()
         self.database = self.client.accessDatabase()
         self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
-        self.imp_inv_index_table = self.client.accessInvertedIndexCollection(self.database)
+        self.imp_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndex')
+        self.nrml_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndexNormal')
 
 
     def load_collections(self):
@@ -20,12 +22,12 @@ class Indexer(object):
         self.total_docs = self.frwd_index_cursor.count()
         print(self.total_docs)
 
-        inv_cursor = self.client.retrieveAllFromInvertedIndexDatabase(self.imp_inv_index_table)
-        for doc in inv_cursor:
-            l = doc['contents']
-            len_l = len(l)
-            for d in l:
-                print d['tf'], d['tf_idf'], len_l
+        # inv_cursor = self.client.retrieveAllFromInvertedIndexDatabase(self.imp_inv_index_table)
+        # for doc in inv_cursor:
+        #     l = doc['contents']
+        #     len_l = len(l)
+        #     for d in l:
+        #         print d['tf'], d['tf_idf'], len_l
         # i = 0
         # for row in self.frwd_index_cursor:
         # 	print row['url'], row['contents'][3]
@@ -90,35 +92,46 @@ class Indexer(object):
                     # sync back to the file
                     # frwd_index.sync()
 
-    def create_inverted_index(self):
+    def create_inverted_index(self, collection_type):
         """
         Function to create inverted index using the frwd index
         It can create 2 indexes (important and normal)
         """
         self.frwd_index_cursor = self.client.retrieveAllFromForwardIndexDatabase(self.frwd_index_table)
 
+        i = 0 
         for document in self.frwd_index_cursor:
+            i += 1
+            if i % 10 == 0:
+                print(str(i) + " documents processed in create_inverted_index for " + collection_type)
             url = document['url']
             page_info = document['contents']
 
-            important_tokens = page_info[0]
+            if collection_type == "Important":
+                tokens = page_info[0]
+                table = self.imp_inv_index_table
+            elif collection_type == "Normal":
+                tokens = page_info[1]
+                table = self.nrml_inv_index_table
+
             word_visited = {}  # to track if the word is already considered
-            for word in important_tokens:
+            for word in tokens:
+
                 if word not in word_visited:
-                    tf, loc = self.calc_tf_loc(word, important_tokens)
-                    
-                    inv_cursor = self.client.retrieveFromInvertedIndexDatabase(self.imp_inv_index_table, word)
+                    tf, loc = self.calc_tf_loc(word, tokens)
+
+                    inv_cursor = self.client.retrieveFromInvertedIndexDatabase(table, word)
 
                     if inv_cursor.count() == 0:
                         # if not found then write
                         current_list = []
                         current_list.append({'url': url, 'tf': tf, 'loc': loc})
-                        self.client.writeToInvertedIndexDatabase(self.imp_inv_index_table, word, current_list)
+                        self.client.writeToInvertedIndexDatabase(table, word, current_list)
                     else:
                         # if found then fetch the old dict and update
                         current_list = inv_cursor.next()['contents']
                         current_list.append({'url': url, 'tf': tf, 'loc': loc})
-                        self.client.updateInvertedIndexDatabase(self.imp_inv_index_table, word, current_list)
+                        self.client.updateInvertedIndexDatabase(table, word, current_list)
 
                     # mark this word as seen for the current list of tokens
                     word_visited[word] = True
@@ -135,7 +148,7 @@ class Indexer(object):
                 loc.append(i)
         return tf, loc
 
-    def update_inverted_index(self):
+    def update_inverted_index(self, collection_type):
         """
         Function to add tf_idf to the inverted index
         """
@@ -143,9 +156,18 @@ class Indexer(object):
         self.frwd_index_cursor = self.client.retrieveAllFromForwardIndexDatabase(self.frwd_index_table)
         self.total_docs = self.frwd_index_cursor.count()
 
-        inv_cursor = self.client.retrieveAllFromInvertedIndexDatabase(self.imp_inv_index_table)
+        if collection_type == "Important":
+            table = self.imp_inv_index_table
+        elif collection_type == "Normal":
+            table = self.nrml_inv_index_table
+        
+        inv_cursor = self.client.retrieveAllFromInvertedIndexDatabase(table)
 
+        i = 0
         for document in inv_cursor:
+            i += 1
+            if i % 10 == 0:
+                print(str(i) + " documents processed in update_inverted_index for " + collection_type)
             word = document['word']
 
             # load the details list for the current word
@@ -160,7 +182,7 @@ class Indexer(object):
                 tf_idf = self.cal_tf_idf(tf, word_in_docs)
 
                 detail_dict['tf_idf'] = tf_idf
-            self.client.updateInvertedIndexDatabase(self.imp_inv_index_table, word, word_details_list)
+            self.client.updateInvertedIndexDatabase(table, word, word_details_list)
 
     def cal_tf_idf(self, tf, nk):
         """
@@ -174,7 +196,9 @@ if __name__ == '__main__':
     ind = Indexer()
     ind.load_collections()
     # ind.update_frwd_index()
-    # ind.create_inverted_index()
-    # ind.update_inverted_index()
+    # ind.create_inverted_index('Important')
+    # ind.update_inverted_index('Important')
+    # ind.create_inverted_index('Normal')
+    # ind.update_inverted_index('Normal')
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
     # print tf, loc
