@@ -23,12 +23,12 @@ class Indexer(object):
         # 	i += 1
         self.important_inverted_index = shelve.open('imp_inverted_index.shelve', writeback=True)
         print(len(self.important_inverted_index))
-        # i = 1
-        # for word in self.important_inverted_index:
-        #     print word, " - ", self.important_inverted_index[word]
-        #     if i > 2:
-        #         break
-        #     i += 1
+        i = 1
+        for word in self.important_inverted_index:
+            print word, " - ", self.important_inverted_index[word]
+            if i > 10:
+                break
+            i += 1
 
     def update_frwd_index(self):
         """
@@ -83,12 +83,12 @@ class Indexer(object):
             for word in important_tokens:
                 if word not in word_visited:
                     tf, loc = self.calc_tf_loc(word, important_tokens)
-                    # get the current list for the word
-                    current_list = imp_inv_index.get(word, [])
+                    # get the current dict for the word
+                    current_dict = imp_inv_index.get(word, {})
                     # add the new info
-                    current_list.append({'url': url, 'tf': tf, 'loc': loc})
+                    current_dict[url] = {'tf': tf, 'loc': loc}
                     # add it to the dictionary
-                    imp_inv_index[word] = current_list
+                    imp_inv_index[word] = current_dict
                     imp_inv_index.sync()
                     # mark this word as seen for the current list of tokens
                     word_visited[word] = True
@@ -111,16 +111,18 @@ class Indexer(object):
         """
         imp_inv_index = self.important_inverted_index
         for word in imp_inv_index:
-            word_details_list = imp_inv_index[word]
-            word_in_docs = len(word_details_list)
-            for i in xrange(len(word_details_list)):
+            # load the details dict for the current word
+            word_details_dict = imp_inv_index[word]
+            # the no. of url's(keys) in the dict will signify the no. of docs it appears
+            word_in_docs = len(word_details_dict)
+            for url in word_details_dict:
                 # load detail for current page
-                detail = word_details_list[i]
+                detail = word_details_dict[url]
                 tf = detail['tf']
                 tf_idf = self.cal_tf_idf(tf, word_in_docs)
                 detail['tf_idf'] = tf_idf
                 # update detail
-                word_details_list[i] = detail
+                word_details_dict[url] = detail
                 imp_inv_index.sync()
 
     def cal_tf_idf(self, tf, nk):
