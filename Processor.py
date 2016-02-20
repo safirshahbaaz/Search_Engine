@@ -9,6 +9,7 @@ import re
 import string
 import unicodedata
 from collections import namedtuple
+import DatabaseWriter as dw
 
 stop_words = stopwords.words("english")
 
@@ -23,7 +24,9 @@ class Processor(object):
     """
 
     def __init__(self):
-        pass
+        self.client = dw.DatabaseWriter()
+        self.database = self.client.accessDatabase()
+        self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
 
     def process_file(self):
         """
@@ -209,8 +212,10 @@ class Processor(object):
         Function to store the contents in a shelve file, used for further processing
         """
         referral_count = 0  # initilizing the referral count which is currently not calculated
-        all_info[url] = important, normal, links, referral_count
-        all_info.sync()
+        # all_info[url] = important, normal, links, referral_count
+        # all_info.sync()
+        info_tuple = important, normal, links, referral_count
+        self.client.writeToForwardIndexDatabase(self.frwd_index_table, url, info_tuple)
 
     def clean_tokens(self, tklist):
         """

@@ -1,44 +1,50 @@
 import shelve
 from math import log10
 from collections import namedtuple
-
+import DatabaseWriter as dw
 
 # PageInfo = namedtuple('PageInfo', 'important, normal, links, referral_count')
 
 class Indexer(object):
     def __init__(self):
-        pass
+        self.client = dw.DatabaseWriter()
+        self.database = self.client.accessDatabase()
+        self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
+        self.imp_inv_index_table = self.client.accessInvertedIndexCollection(self.database)
 
-    def load_shelve(self):
-        self.all_info = shelve.open('all_info.shelve', writeback=True)
-        '''all_info[url] = (important, normal, links, referral_count)'''
-        self.total_docs = len(self.all_info)
+
+    def load_collections(self):
+        # self.all_info = shelve.open('all_info.shelve', writeback=True)
+        self.frwd_index_cursor = self.client.retrieveAllFromForwardIndexDatabase(self.frwd_index_table)
+        '''frwd_index_cursor[url] = (important, normal, links, referral_count)'''
+        self.total_docs = self.frwd_index_cursor.count()
         print(self.total_docs)
         # i = 0
-        # for url in self.all_info:
-        # 	print url, self.all_info[url]
-        # 	# print self.all_info[url][0]
+        # for row in self.frwd_index_cursor:
+        # 	print row['url'], row['contents'][3]
+        # 	# print self.frwd_index_cursor[url][0]
         # 	if i>2:
         # 		break
         # 	i += 1
-        self.important_inverted_index = shelve.open('imp_inverted_index.shelve', writeback=True)
-        print(len(self.important_inverted_index))
-        i = 1
-        for word in self.important_inverted_index:
-            print word, " - ", self.important_inverted_index[word]
-            if i > 10:
-                break
-            i += 1
+        # self.imp_inv_index_table = shelve.open('imp_inverted_index.shelve', writeback=True)
+        # print(len(self.imp_inv_index_table))
+        # i = 1
+        # for word in self.imp_inv_index_table:
+        #     print word, " - ", self.imp_inv_index_table[word]
+        #     if i > 10:
+        #         break
+        #     i += 1
 
     def update_frwd_index(self):
         """
         Function to go over the links on each page and update the important tokens of the referred page
         along with incrementing the referral count (PageRank)
         """
-        frwd_index = self.all_info
+        # frwd_index = self.all_info
 
-        for url in frwd_index:
-            page_info = frwd_index[url]
+        for document in self.frwd_index_cursor:
+            # url = document['url']
+            page_info = document['contents']
             # important = page_info[0]
             links = page_info[2]
 
@@ -48,16 +54,18 @@ class Indexer(object):
             '''
             for link_url, link_text_tokens in links:
                 # if the link found on the page is present in the document set
-                if link_url in frwd_index:
+                link_url_info_cursor = self.client.retrieveFromForwardIndexDatabase(self.frwd_index_table, link_url)
+
+                if link_url_info_cursor.count() > 0:
                     # add the link text tokens to the important list and increment referral count by 1
                     # load tuple of the referred url
-                    link_url_information = frwd_index[link_url]
+                    link_url_information_contents = link_url_info_cursor.next()['contents']
 
                     # store contents of the tuple
-                    important_tokens = link_url_information[0]
-                    normal_tokens = link_url_information[1]
-                    l = link_url_information[2]
-                    referral_count = int(link_url_information[3])
+                    important_tokens = link_url_information_contents[0]
+                    normal_tokens = link_url_information_contents[1]
+                    l = link_url_information_contents[2]
+                    referral_count = int(link_url_information_contents[3])
 
                     # adding the link text token to the important tokens list of the page
                     important_tokens.extend(link_text_tokens)
@@ -65,9 +73,11 @@ class Indexer(object):
                     referral_count += 1
 
                     # write tuple with updated information
-                    frwd_index[link_url] = important_tokens, normal_tokens, l, referral_count
+                    # frwd_index[link_url] = important_tokens, normal_tokens, l, referral_count
+                    updated_contents = important_tokens, normal_tokens, l, referral_count
+                    self.client.updateForwardIndexDatabase(self.frwd_index_table, link_url, updated_contents)
                     # sync back to the file
-                    frwd_index.sync()
+                    # frwd_index.sync()
 
     def create_inverted_index(self):
         """
@@ -135,8 +145,8 @@ class Indexer(object):
 
 if __name__ == '__main__':
     ind = Indexer()
-    ind.load_shelve()
-    # ind.update_frwd_index()
+    ind.load_collections()
+    ind.update_frwd_index()
     # ind.create_inverted_index()
     # ind.update_inverted_index()
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])

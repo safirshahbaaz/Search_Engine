@@ -8,7 +8,7 @@ class DatabaseWriter(object):
         self.client = MongoClient()
 
     def accessDatabase(self, database_name = 'default'):
-        return self.client['InvertedIndex']
+        return self.client['Index']
 
     ''' Forward Index Database Manipulation functions '''
 
@@ -21,29 +21,35 @@ class DatabaseWriter(object):
     def retrieveFromForwardIndexDatabase(self, collection, url):
         return collection.find({'url': url})
 
+    def retrieveAllFromForwardIndexDatabase(self, collection):
+        return collection.find()    
+
     def deleteFromForwardIndexDatabase(self, collection, url):
         collection.delete_many({'url': url})
 
     def updateForwardIndexDatabase(self, collection, url, contents):
         collection.update_one({'url': url}, {"$set": {"contents": contents}})
 
+    def checkIfDocumentExists(self, collection, key, value):
+        return collection.find({key: value}).count() > 0
+
     ''' ------------------------------------------------------------------ '''
 
     ''' Word Frequency Database manipulation functions '''
 
-    def accessWordFrequencyCollection(self, db):
-        return db['WordFrequency']
+    def accessInvertedIndexCollection(self, db):
+        return db['InvertedIndex']
 
-    def writeToWordFrequencyDatabase(self, collection, word, contents):
+    def writeToInvertedIndexDatabase(self, collection, word, contents):
         collection.insert_one({'word': word, 'contents': contents})
 
-    def retrieveFromWordFrequencyDatabase(self, collection, word):
+    def retrieveFromInvertedIndexDatabase(self, collection, word):
         return collection.find({'word': word})
 
-    def deleteFromWordFrequencyDatabase(self, collection, word):
+    def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
 
-    def updateWordFrequencyDatabase(self, collection, word, contents):
+    def updateInvertedIndexDatabase(self, collection, word, contents):
         collection.update_one({'word': word}, {"$set": {"contents": contents}})
 
 if __name__ == '__main__':
