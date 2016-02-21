@@ -62,7 +62,7 @@ class DatabaseWriter(object):
             result = bulk_writer.execute()
 
             if _SHOW_DEBUG_TRACE:
-                print result
+                # print result
                 print("Writing records to DB")
         except Exception as e:
             print type(e).__name__ + "Error occurred while writing to the database"
