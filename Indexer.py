@@ -13,6 +13,8 @@ class Indexer(object):
         self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
         self.imp_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndex')
         self.nrml_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndexNormal')
+        self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
+        self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
 
 
     def load_collections(self):
@@ -109,9 +111,11 @@ class Indexer(object):
 
             if collection_type == "Important":
                 tokens = page_info[0]
+                bulk_writer = self.imp_bulk_writer
                 table = self.imp_inv_index_table
             elif collection_type == "Normal":
                 tokens = page_info[1]
+                bulk_writer = self.nrml_bulk_writer
                 table = self.nrml_inv_index_table
 
             word_visited = {}  # to track if the word is already considered
@@ -131,10 +135,25 @@ class Indexer(object):
                         # if found then fetch the old dict and update
                         current_list = inv_cursor.next()['contents']
                         current_list.append({'url': url, 'tf': tf, 'loc': loc})
-                        self.client.updateInvertedIndexDatabase(table, word, current_list)
+                        bulk_writer.find({'word': word}).update({'$set': {'contents': current_list}})
+                        #self.client.updateInvertedIndexDatabase(table, word, current_list)
 
                     # mark this word as seen for the current list of tokens
                     word_visited[word] = True
+
+            # write at every 100 documents
+            if i % 100 == 0:
+                self.write_to_db(bulk_writer)
+                if collection_type == "Important":
+                    self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
+                    bulk_writer = self.imp_bulk_writer
+                elif collection_type == "Normal":
+                    self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
+                    bulk_writer = self.nrml_bulk_writer
+        
+        # write the remaining docs
+        self.write_to_db(bulk_writer)
+
 
     def calc_tf_loc(self, word, tokens):
         """
@@ -157,8 +176,12 @@ class Indexer(object):
         self.total_docs = self.frwd_index_cursor.count()
 
         if collection_type == "Important":
+            self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
+            bulk_writer = self.imp_bulk_writer
             table = self.imp_inv_index_table
         elif collection_type == "Normal":
+            self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
+            bulk_writer = self.nrml_bulk_writer
             table = self.nrml_inv_index_table
         
         inv_cursor = self.client.retrieveAllFromInvertedIndexDatabase(table)
@@ -182,7 +205,30 @@ class Indexer(object):
                 tf_idf = self.cal_tf_idf(tf, word_in_docs)
 
                 detail_dict['tf_idf'] = tf_idf
-            self.client.updateInvertedIndexDatabase(table, word, word_details_list)
+            
+            # self.client.updateInvertedIndexDatabase(table, word, word_details_list)
+            bulk_writer.find({'word': word}).update({"$set": {"contents": word_details_list}})
+            
+            # write at every 100 documents
+            if i % 100 == 0:
+                self.write_to_db(bulk_writer)
+                if collection_type == "Important":
+                    self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
+                    bulk_writer = self.imp_bulk_writer
+                elif collection_type == "Normal":
+                    self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
+                    bulk_writer = self.nrml_bulk_writer
+        
+        # write the remaining docs
+        self.write_to_db(bulk_writer)
+    
+    def write_to_db(self, bulk_writer):
+        try:
+            result = bulk_writer.execute()
+            print result
+            print("Writing records to DB")
+        except Exception as e:
+            print(type(e).__name__ + ": Something went wrong during writing")
 
     def cal_tf_idf(self, tf, nk):
         """
@@ -196,8 +242,8 @@ if __name__ == '__main__':
     ind = Indexer()
     ind.load_collections()
     # ind.update_frwd_index()
-    # ind.create_inverted_index('Important')
-    # ind.update_inverted_index('Important')
+    ind.create_inverted_index("Important")
+    ind.update_inverted_index('Important')
     # ind.create_inverted_index('Normal')
     # ind.update_inverted_index('Normal')
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
