@@ -1,5 +1,7 @@
 from pymongo import *
 
+_SHOW_DEBUG_TRACE = True
+
 class DatabaseWriter(object):
 
     "' Integration with MongoDB to write and retrieve the inverted indexes '"
@@ -51,6 +53,19 @@ class DatabaseWriter(object):
 
     def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
+
+    def addToBulkWriter(self, bulk_writer, word, contents):
+        bulk_writer.find({'word': word}).update({'$set': {'contents': contents}})
+
+    def updateBulkContentToDatabase(self, bulk_writer):
+        try:
+            result = bulk_writer.execute()
+
+            if _SHOW_DEBUG_TRACE:
+                print result
+                print("Writing records to DB")
+        except Exception as e:
+            print type(e).__name__ + "Error occurred while writing to the database"
 
     def updateInvertedIndexDatabase(self, collection, word, contents):
         collection.update_one({'word': word}, {"$set": {"contents": contents}})
