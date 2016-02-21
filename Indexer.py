@@ -236,7 +236,7 @@ class Indexer(object):
 if __name__ == '__main__':
     ind = Indexer()
     ind.load_collections()
-    # ind.update_frwd_index()
+    ind.update_frwd_index()
     ind.create_inverted_index("Important")
     ind.update_inverted_index('Important')
     # ind.create_inverted_index('Normal')

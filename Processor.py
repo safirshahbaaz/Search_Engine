@@ -13,7 +13,8 @@ import DatabaseWriter as dw
 
 stop_words = stopwords.words("english")
 
-filepath = "./tempfiles/"
+# filepath = "./tempfiles/"
+filepath = "./backup/run2/"
 
 #Shelve files delclaration
 all_info = shelve.open('all_info.shelve', writeback=True)
@@ -317,7 +318,14 @@ class Processor(object):
         # convert the content to lower case to make it case insensitive
         content = content.lower()
 
-        token_list = [word for word in content.split() if word not in stop_words]
+        token_list = []
+        for word in content.split():
+            if word not in stop_words:
+                # if the word ends with 's then remove it
+                if word.endswith("'s"):
+                    word = word[:-2]    
+                token_list.append(word)
+
 
         # storing the token count in a class variable
         # self.token_count = len(token_list)
