@@ -229,7 +229,7 @@ class Indexer(object):
         """
         Function to calculate tf_idf
         """
-        tf_idf = float(log10(1 + int(tf))) * float(log10(self.total_docs / float(nk)))
+        tf_idf = float(1 + log10(int(tf))) * float(log10(self.total_docs / float(nk)))
         return tf_idf
 
 
