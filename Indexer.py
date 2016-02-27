@@ -239,7 +239,7 @@ if __name__ == '__main__':
     ind.update_frwd_index()
     ind.create_inverted_index("Important")
     ind.update_inverted_index('Important')
-    # ind.create_inverted_index('Normal')
-    # ind.update_inverted_index('Normal')
+    cProfile.run("ind.create_inverted_index('Normal')")
+    ind.update_inverted_index('Normal')
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
     # print tf, loc
