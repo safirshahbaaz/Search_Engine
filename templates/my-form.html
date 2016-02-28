@@ -5,13 +5,13 @@
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 </head>
 <body>
-    <div class="row">
+    <div class="row vertical-center-row">
         <div class="col-md-4"></div>
-        <div class="col-md-4">
-            <h1>Golden Retrievers</h1>
+        <div class="text-center col-md-4">
+            <img src="{{ url_for('static',filename='styles/Golden_Retrievers.jpg') }}" style="width:400px;height:100px;">
             <form action="{{ url_for('my_form_post') }}" method="POST">
-                <input type="text" name="text">
-                <input type="submit" name="my-form" value="Search">
+                <input type="text" name="text" class="form-control" placeholder="Enter Query" style="width: 400px;"><br>
+                <input class="btn btn-default" type="submit" value="Search">
             </form>
         </div>
         <div class="col-md-4"></div>

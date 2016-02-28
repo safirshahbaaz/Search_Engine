@@ -59,7 +59,7 @@ class DatabaseWriter(object):
         if tf_idf_update == False:
             bulk_writer.find({'word': word}).upsert().update({'$addToSet': {'contents': contents}})
         else:
-            bulk_writer.find({'word': word}).replace_one({'contents': contents})
+            bulk_writer.find({'word': word}).replace_one({'word': word, 'contents': contents})
 
     def updateBulkContentToDatabase(self, bulk_writer):
         try:
