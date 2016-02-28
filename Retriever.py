@@ -106,8 +106,12 @@ def runner(query):
 		result_sets, common_keys = ar.retrieve_results(query_tokens, "Normal")
 		final_results.update(ranker.rank(result_sets, common_keys))
 
+	result_lists =[]
 	for result in sorted(final_results, key=final_results.get, reverse=True):
 		print result, "-", final_results[result]
+		result_lists.append(result)
+
+	return result_lists
 
 if __name__ == '__main__':
 	runner("crista lopes")

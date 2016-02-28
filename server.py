@@ -1,11 +1,8 @@
 from flask import Flask
-from flask import request
-from flask import render_template
+from flask import request,render_template, url_for
 import sys
 
-sys.path.insert(0, '../QueryProcessor')
-
-import QueryProcessor
+import Retriever
 
 app = Flask(__name__)
 
@@ -16,9 +13,9 @@ def my_form():
 @app.route('/', methods=['POST'])
 def my_form_post():
 
-    text = request.form['text'] # contains the query submitted
+    query = request.form['text'].encode('utf-8') # contains the query submitted
 
-    results = ["http://www.ics.uci.edu", "http://facebook.com"]
+    results = Retriever.runner(query)
 
     # keep result in the form of a string, should be fine for small number of results
     # make sure multiple results are concatenated by using <br> so html displays them in new lines
@@ -28,4 +25,4 @@ def my_form_post():
 if __name__ == '__main__':
     #return app.root_path
     app.debug= True
-    app.run()
+    app.run(port=5004)

@@ -16,9 +16,6 @@ stop_words = stopwords.words("english")
 filepath = "./tempfiles/"
 # filepath = "./backup/run2/"
 
-#Shelve files delclaration
-all_info = shelve.open('all_info.shelve', writeback=True)
-
 class Processor(object):
     """
     Class having utilities to process document data from output txt files
