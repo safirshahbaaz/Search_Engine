@@ -54,8 +54,12 @@ class DatabaseWriter(object):
     def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
 
-    def addToBulkWriter(self, bulk_writer, word, contents):
-        bulk_writer.find({'word': word}).update({'$set': {'contents': contents}})
+    def addToBulkWriter(self, bulk_writer, word, contents, tf_idf_update = False):
+
+        if tf_idf_update == False:
+            bulk_writer.find({'word': word}).upsert().update({'$addToSet': {'contents': contents}})
+        else:
+            bulk_writer.find({'word': word}).replace_one({'contents': contents})
 
     def updateBulkContentToDatabase(self, bulk_writer):
         try:

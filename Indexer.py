@@ -122,23 +122,22 @@ class Indexer(object):
             for word in tokens:
 
                 if word not in word_visited:
+                    # current_list = {}
                     tf, loc = self.calc_tf_loc(word, tokens)
 
-                    inv_cursor = self.client.retrieveFromInvertedIndexDatabase(table, word)
+                    '''inv_cursor = self.client.retrieveFromInvertedIndexDatabase(table, word)
 
                     if inv_cursor.count() == 0:
                         # if not found then write
                         current_list = []
                         current_list.append({'url': url, 'tf': tf, 'loc': loc})
                         self.client.writeToInvertedIndexDatabase(table, word, current_list)
-                    else:
+                    else:'''
                         # if found then fetch the old dict and update
-                        current_list = inv_cursor.next()['contents']
-                        current_list.append({'url': url, 'tf': tf, 'loc': loc})
+                        #current_list = inv_cursor.next()['contents']
+                    current_list= {'url': url, 'tf': tf, 'loc': loc}
 
-                        self.client.addToBulkWriter(bulk_writer, word, current_list)
-                        #bulk_writer.find({'word': word}).update({'$set': {'contents': current_list}})
-                        #self.client.updateInvertedIndexDatabase(table, word, current_list)
+                    self.client.addToBulkWriter(bulk_writer, word, current_list)
 
                     # mark this word as seen for the current list of tokens
                     word_visited[word] = True
@@ -199,9 +198,10 @@ class Indexer(object):
             word_details_list = document['contents']
             # the no. of dicts in the list will signify the no. of docs it appears
             word_in_docs = len(word_details_list)
-            
+
             for detail_dict in word_details_list:
                 # load detail for current page
+
                 tf = detail_dict['tf']
 
                 tf_idf = self.cal_tf_idf(tf, word_in_docs)
@@ -209,7 +209,7 @@ class Indexer(object):
                 detail_dict['tf_idf'] = tf_idf
             
             # self.client.updateInvertedIndexDatabase(table, word, word_details_list)
-            self.client.addToBulkWriter(bulk_writer, word, word_details_list)
+            self.client.addToBulkWriter(bulk_writer, word, word_details_list, tf_idf_update = True)
             
             # write at every 100 documents
             if i % 100 == 0:
@@ -236,10 +236,10 @@ class Indexer(object):
 if __name__ == '__main__':
     ind = Indexer()
     ind.load_collections()
-    ind.update_frwd_index()
-    ind.create_inverted_index("Important")
-    ind.update_inverted_index('Important')
+    #ind.update_frwd_index()
+    #cProfile.run('ind.create_inverted_index("Important")')
+    #ind.update_inverted_index('Important')
     cProfile.run("ind.create_inverted_index('Normal')")
-    ind.update_inverted_index('Normal')
+    # ind.update_inverted_index('Normal')
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
     # print tf, loc
