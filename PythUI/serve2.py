@@ -1,7 +1,11 @@
 from flask import Flask
 from flask import request
 from flask import render_template
-import ../QueryProcessor
+import sys
+
+sys.path.insert(0, '../QueryProcessor')
+
+import QueryProcessor
 
 app = Flask(__name__)
 
@@ -14,11 +18,12 @@ def my_form_post():
 
     text = request.form['text'] # contains the query submitted
 
-    result= "1. first<br>2.second<br>3.third"
+    results = ["http://www.ics.uci.edu", "http://facebook.com"]
+
     # keep result in the form of a string, should be fine for small number of results
     # make sure multiple results are concatenated by using <br> so html displays them in new lines
     
-    return result  #return what you want here
+    return render_template("results.html", name = results)  #return what you want here
 
 if __name__ == '__main__':
     #return app.root_path
