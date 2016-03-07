@@ -42,8 +42,14 @@ class AnswerRetriever(object):
 					# referral_count = frwd_index_cursor.next()['contents'][3]
 					
 					# print url, " - ",referral_count, " : ",info['tf_idf']
+					
+					# if tf_idf was not updated properly then skip it 
+					try:
+						score = info['tf_idf']
+					except:
+						print("Skipping url as no tf_idf is found")
+						continue
 
-					score = info['tf_idf']
 					results[url] = score
 				if len(common_keys) == 0:
 					common_keys = set(results)
@@ -114,6 +120,6 @@ def runner(query):
 	return result_lists
 
 if __name__ == '__main__':
-	runner("crista lopes")
+	runner("student affairs")
 
 
