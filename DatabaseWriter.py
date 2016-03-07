@@ -24,7 +24,7 @@ class DatabaseWriter(object):
         return collection.find({'url': url})
 
     def retrieveAllFromForwardIndexDatabase(self, collection):
-        return collection.find()    
+        return collection.find(no_cursor_timeout=True)    
 
     def deleteFromForwardIndexDatabase(self, collection, url):
         collection.delete_many({'url': url})
@@ -49,7 +49,7 @@ class DatabaseWriter(object):
         return collection.find({'word': word})
 
     def retrieveAllFromInvertedIndexDatabase(self, collection):
-        return collection.find()  
+        return collection.find(no_cursor_timeout=True)  
 
     def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
