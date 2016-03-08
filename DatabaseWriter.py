@@ -1,4 +1,5 @@
 from pymongo import *
+import config
 
 _SHOW_DEBUG_TRACE = True
 
@@ -10,7 +11,7 @@ class DatabaseWriter(object):
         self.client = MongoClient()
 
     def accessDatabase(self, database_name = 'default'):
-        return self.client['Index']
+        return self.client[config.db_name]
 
     ''' Forward Index Database Manipulation functions '''
 

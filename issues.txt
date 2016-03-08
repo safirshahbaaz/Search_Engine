@@ -1,0 +1,19 @@
+--------OPEN------- 
+Links with http and https variations are showing up in the results
+
+http://www.ics.uci.edu/grad/index
+https://www.ics.uci.edu/grad/index
+
+Need to introduce check while creating forward index
+
+--------OPEN------- 
+Inverted index creation is very slow, hence we could not execute for all the docs
+Limited pages, so results are not proper
+
+--------OPEN-------
+
+There are still pages like:
+http://www.ics.uci.edu/~mlearn/databases/datasets/Folio
+
+need to only consider databases/
+

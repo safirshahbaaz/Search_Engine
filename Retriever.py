@@ -1,5 +1,7 @@
 import DatabaseWriter as dw
 from Processor import Processor
+from math import log
+import config
 
 class QueryProcessor(object):
 
@@ -21,7 +23,6 @@ class AnswerRetriever(object):
 
 	def retrieve_results(self, query_tokens, index_name):
 		result_sets = []	# variable to store the results retrived from individual query terms
-		common_keys = set()	# variable to store the common keys in case of multiple query terms
 
 		if index_name == "Important":
 			table = self.imp_inv_index_table
@@ -29,7 +30,7 @@ class AnswerRetriever(object):
 			table = self.nrml_inv_index_table
 
 		for token in query_tokens:
-			results = {}
+			results_dict = {}
 			results_cursor = self.client.retrieveFromInvertedIndexDatabase(table, token)
 
 			for document in results_cursor:
@@ -37,27 +38,16 @@ class AnswerRetriever(object):
 				for info in contents:
 					url = info['url']
 					
-					# code segment to fetch the referral count
-					# frwd_index_cursor = self.client.retrieveFromForwardIndexDatabase(self.frwd_index_table, url)
-					# referral_count = frwd_index_cursor.next()['contents'][3]
-					
-					# print url, " - ",referral_count, " : ",info['tf_idf']
-					
 					# if tf_idf was not updated properly then skip it 
 					try:
-						score = info['tf_idf']
+						results_dict[url] = info['tf_idf']
 					except:
 						print("Skipping url as no tf_idf is found")
 						continue
 
-					results[url] = score
-				if len(common_keys) == 0:
-					common_keys = set(results)
-				else:
-					common_keys = set(results) & common_keys
-			result_sets.append(results)
+			result_sets.append(results_dict)
 		
-		return result_sets, common_keys
+		return result_sets
 
 
 
@@ -71,9 +61,12 @@ class Ranker(object):
 		self.imp_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndex')
 		self.nrml_inv_index_table = self.client.accessInvertedIndexCollection(self.database, 'InvertedIndexNormal')
 
-	def rank(self, result_sets, common_keys):
+	def rank(self, result_sets):
 		# if there are more than 1 result sets then we need to perform joining 
 		if len(result_sets) > 1:
+			# find the common urls in the result sets
+			common_keys = (set.intersection(*(set(d.iterkeys()) for d in result_sets)))
+
 			combined_results = {}
 			for key in common_keys:
 				for result in result_sets:
@@ -83,43 +76,54 @@ class Ranker(object):
 		else:
 			results_dict = result_sets[0]
 		
-		# print(str(len(results_dict)) + " results found")
-		# print("----------------------------------------")
-		# for result in sorted(results_dict, key=results_dict.get, reverse=True):
-		# 	# code segment to fetch the referral count
-		# 	frwd_index_cursor = self.client.retrieveFromForwardIndexDatabase(self.frwd_index_table, result)
-		# 	referral_count = frwd_index_cursor.next()['contents'][3]
-		# 	print result, "-", results_dict[result], "-", referral_count
+		if config.include_page_rank_score is True:
+			for result in results_dict:
+				# code segment to fetch the referral count
+				frwd_index_cursor = self.client.retrieveFromForwardIndexDatabase(self.frwd_index_table, result)
+				referral_count = frwd_index_cursor.next()['contents'][3]
+				page_rank_score = config.referral_factor * log(referral_count+2, 2)
+				print result, "-", results_dict[result], "-", page_rank_score
+				
+				results_dict[result] = results_dict[result] + page_rank_score
 
-		results_sorted_dict = {key: results_dict[key] for key in sorted(results_dict, key=results_dict.get, reverse=True)}
-
-		return results_sorted_dict
+		return results_dict
 
 
 def runner(query):
 	qp = QueryProcessor()
 	ar = AnswerRetriever()
 	ranker = Ranker()
-
+	result_lists =[]	
+	
 	query_tokens = qp.process_query(query)
 	
-	result_sets, common_keys = ar.retrieve_results(query_tokens, "Important")
-	final_results = ranker.rank(result_sets, common_keys)
+	result_sets = ar.retrieve_results(query_tokens, "Important")
+	important_results = ranker.rank(result_sets)
 
-
-	if len(final_results) < 10:
-		# fetch from InvertedIndexNormal
-		result_sets, common_keys = ar.retrieve_results(query_tokens, "Normal")
-		final_results.update(ranker.rank(result_sets, common_keys))
-
-	result_lists =[]
-	for result in sorted(final_results, key=final_results.get, reverse=True):
-		print result, "-", final_results[result]
+	# sort and add the important results separately 
+	for result in sorted(important_results, key=important_results.get, reverse=True):
+		# print type(result)
 		result_lists.append(result)
+
+	if len(result_lists) < 10:
+		# fetch from InvertedIndexNormal
+		result_sets= ar.retrieve_results(query_tokens, "Normal")
+		normal_results = ranker.rank(result_sets)
+
+		for result in sorted(normal_results, key=normal_results.get, reverse=True):
+			# print result, "-", normal_results[result]
+			result_lists.append(result)
+
 
 	return result_lists
 
 if __name__ == '__main__':
-	runner("student affairs")
+	ans = runner("machine learning")
+
+	print("----------Results-------------")
+	for result in ans:
+		print(result)
+	
+
 
 
