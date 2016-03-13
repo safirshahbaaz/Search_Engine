@@ -1,7 +1,10 @@
 import DatabaseWriter as dw
 from Processor import Processor
 from math import log
+import requests
+import json
 import config
+import re
 
 class QueryProcessor(object):
 
@@ -82,11 +85,47 @@ class Ranker(object):
 				frwd_index_cursor = self.client.retrieveFromForwardIndexDatabase(self.frwd_index_table, result)
 				referral_count = frwd_index_cursor.next()['contents'][3]
 				page_rank_score = config.referral_factor * log(referral_count+2, 2)
-				print result, "-", results_dict[result], "-", page_rank_score
+				# print result, "-", results_dict[result], "-", referral_count
 				
 				results_dict[result] = results_dict[result] + page_rank_score
 
 		return results_dict
+
+class NDCG(object):
+
+	def __init__(self):
+		pass
+
+	def retrieve_google_results(self, query):
+		query = query.replace(" ", "+")
+		req = "https://www.googleapis.com/customsearch/v1?key=AIzaSyCvVv4pfYKUL9zm-6ig-SZVZi2kXGHz5Vo&cx=001842016066373955853:izbbrekr9t8&q="+query+"&filter=1&start=1&num=10&alt=json"
+		r = requests.get(req)
+		content_dict = json.loads(r.content)
+		results_1 = [content_dict['items'][i]['link'] for i in xrange(10)]
+
+		req = "https://www.googleapis.com/customsearch/v1?key=AIzaSyCvVv4pfYKUL9zm-6ig-SZVZi2kXGHz5Vo&cx=001842016066373955853:izbbrekr9t8&q="+query+"&filter=1&start=11&num=10&alt=json"
+		r = requests.get(req)
+		content_dict = json.loads(r.content)
+		results_2 = [content_dict['items'][i]['link'] for i in xrange(10)]
+
+		results_1.extend(results_2)
+		final_results = []
+		for result in results_1:
+			if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4"\
+                + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
+                + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
+                + "|thmx|mso|arff|rtf|jar|csv" \
+                + "|rm|smil|wmv|swf|wma|zip|rar|gz|rss)$", result):
+				final_results.append(result)
+
+		for result in final_results:
+			print result
+
+		return final_results
+
+	def calc_ndcg(self, google_results, local_results, k):
+		pass
+
 
 
 def runner(query):
@@ -112,17 +151,23 @@ def runner(query):
 
 		for result in sorted(normal_results, key=normal_results.get, reverse=True):
 			# print result, "-", normal_results[result]
-			result_lists.append(result)
+			if result not in result_lists:
+				result_lists.append(result)
 
 
 	return result_lists
 
 if __name__ == '__main__':
-	ans = runner("machine learning")
+	query = "machine learning"
+	ans = runner(query)
+	ndcg = NDCG()
+	g_results = ndcg.retrieve_google_results(query)
 
-	print("----------Results-------------")
-	for result in ans:
-		print(result)
+	# retr
+
+	# print("----------Results-------------")
+	# for result in ans:
+	# 	print(result)
 	
 
 
