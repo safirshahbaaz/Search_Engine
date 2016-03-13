@@ -10,11 +10,12 @@ import string
 import unicodedata
 from collections import namedtuple
 import DatabaseWriter as dw
-
+from nltk.stem.porter import PorterStemmer
+stemmer = PorterStemmer()
 stop_words = stopwords.words("english")
 
-filepath = "./tempfiles/"
-# filepath = "./backup/run2/"
+# filepath = "./tempfiles/"
+filepath = "./backup/run2/"
 
 class Processor(object):
     """
@@ -22,9 +23,11 @@ class Processor(object):
     """
 
     def __init__(self):
+        self.frwd_index_temp = []
         self.client = dw.DatabaseWriter()
         self.database = self.client.accessDatabase()
         self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
+
 
     def process_file(self):
         """
@@ -47,6 +50,7 @@ class Processor(object):
                                 self.store_content(url, important_tokens, normal_tokens, links)
                             try:
                                 url = line.split("--")[6]
+                                url = url.replace("https://", "http://")
                             except Exception as e:
                                 print("could not extract page")
 
@@ -213,7 +217,10 @@ class Processor(object):
         # all_info[url] = important, normal, links, referral_count
         # all_info.sync()
         info_tuple = important, normal, links, referral_count
-        self.client.writeToForwardIndexDatabase(self.frwd_index_table, url, info_tuple)
+        self.frwd_index_temp.append({'url': url, 'contents': info_tuple})
+
+    def write_to_db(self):
+        self.client.writeAllToForwardIndexDatabase(self.frwd_index_table, self.frwd_index_temp)
 
     def clean_tokens(self, tklist):
         """
@@ -244,11 +251,13 @@ class Processor(object):
 
         token_list = []
         for word in content.split():
-            if word not in stop_words:
-                # if the word ends with 's then remove it
-                if word.endswith("'s"):
-                    word = word[:-2]    
-                token_list.append(word)
+            if word.isalpha():
+                if word not in stop_words:
+                    # if the word ends with 's then remove it
+                    if word.endswith("'s"):
+                        word = word[:-2]
+                    word = stemmer.stem(word).encode('utf-8', errors='ignore')
+                    token_list.append(word)
 
 
         # storing the token count in a class variable
@@ -260,3 +269,4 @@ class Processor(object):
 if __name__ == '__main__':
     p = Processor()
     p.process_file()
+    p.write_to_db()

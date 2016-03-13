@@ -54,6 +54,7 @@ class Indexer(object):
         # frwd_index = self.all_info
         self.frwd_index_cursor = self.client.retrieveAllFromForwardIndexDatabase(self.frwd_index_table)
         '''frwd_index_cursor[url] = (important, normal, links, referral_count)'''
+
         self.total_docs = self.frwd_index_cursor.count()
         print(self.total_docs)
 
@@ -101,21 +102,23 @@ class Indexer(object):
         """
         self.frwd_index_cursor = self.client.retrieveAllFromForwardIndexDatabase(self.frwd_index_table)
 
+        inv_index_temp = {}
+
         i = 0 
         for document in self.frwd_index_cursor:
             i += 1
-            if i % 10 == 0:
+            if i % 100 == 0:
                 print(str(i) + " documents processed in create_inverted_index for " + collection_type)
             url = document['url']
             page_info = document['contents']
 
             if collection_type == "Important":
                 tokens = page_info[0]
-                bulk_writer = self.imp_bulk_writer
+                # bulk_writer = self.imp_bulk_writer
                 table = self.imp_inv_index_table
             elif collection_type == "Normal":
                 tokens = page_info[1]
-                bulk_writer = self.nrml_bulk_writer
+                # bulk_writer = self.nrml_bulk_writer
                 table = self.nrml_inv_index_table
 
             word_visited = {}  # to track if the word is already considered
@@ -125,6 +128,7 @@ class Indexer(object):
                     # current_list = {}
                     tf, loc = self.calc_tf_loc(word, tokens)
 
+                    current_list = inv_index_temp.get(word, [])
                     '''inv_cursor = self.client.retrieveFromInvertedIndexDatabase(table, word)
 
                     if inv_cursor.count() == 0:
@@ -135,25 +139,33 @@ class Indexer(object):
                     else:'''
                         # if found then fetch the old dict and update
                         #current_list = inv_cursor.next()['contents']
-                    current_list= {'url': url, 'tf': tf, 'loc': loc}
 
-                    self.client.addToBulkWriter(bulk_writer, word, current_list)
+                    current_list.append({'url': url, 'tf': tf, 'loc': loc})
+                    inv_index_temp[word] = current_list
+                    # self.client.addToBulkWriter(bulk_writer, word, current_list)
 
                     # mark this word as seen for the current list of tokens
                     word_visited[word] = True
 
             # write at every 100 documents
-            if i % 100 == 0:
-                self.client.updateBulkContentToDatabase(bulk_writer)
-                if collection_type == "Important":
-                    self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
-                    bulk_writer = self.imp_bulk_writer
-                elif collection_type == "Normal":
-                    self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
-                    bulk_writer = self.nrml_bulk_writer
-        
+
+            # if i % 100 == 0:
+            #     self.client.updateBulkContentToDatabase(bulk_writer)
+            #     if collection_type == "Important":
+            #         self.imp_bulk_writer = self.imp_inv_index_table.initialize_ordered_bulk_op()
+            #         bulk_writer = self.imp_bulk_writer
+            #     elif collection_type == "Normal":
+            #         self.nrml_bulk_writer = self.nrml_inv_index_table.initialize_ordered_bulk_op()
+            #         bulk_writer = self.nrml_bulk_writer
+
+        inv_index_array = []
+        for word in inv_index_temp:
+            if word != "":
+                inv_index_array.append({'word': word, 'contents': inv_index_temp[word]})
+
+        self.client.writeAllToInvertedIndexDatabase(table, inv_index_array)
         # write the remaining docs
-        self.client.updateBulkContentToDatabase(bulk_writer)
+        # self.client.updateBulkContentToDatabase(bulk_writer)
 
 
     def calc_tf_loc(self, word, tokens):
@@ -190,7 +202,7 @@ class Indexer(object):
         i = 0
         for document in inv_cursor:
             i += 1
-            if i % 10 == 0:
+            if i % 1000 == 0:
                 print(str(i) + " documents processed in update_inverted_index for " + collection_type)
             word = document['word']
 
@@ -212,7 +224,7 @@ class Indexer(object):
             self.client.addToBulkWriter(bulk_writer, word, word_details_list, tf_idf_update = True)
             
             # write at every 100 documents
-            if i % 100 == 0:
+            if i % 10000 == 0:
                 self.client.updateBulkContentToDatabase(bulk_writer)
 
                 if collection_type == "Important":
@@ -236,10 +248,10 @@ class Indexer(object):
 if __name__ == '__main__':
     ind = Indexer()
     ind.load_collections()
-    #ind.update_frwd_index()
-    #cProfile.run('ind.create_inverted_index("Important")')
-    #ind.update_inverted_index('Important')
-    cProfile.run("ind.create_inverted_index('Normal')")
+    # ind.update_frwd_index()
+    # ind.create_inverted_index("Important")
+    # ind.update_inverted_index('Important')
+    # ind.create_inverted_index('Normal')
     # ind.update_inverted_index('Normal')
     # tf, loc = ind.calc_tf_loc('graduation', ['graduation', 'beyond', 'bren', 'school', 'information', 'computer', 'sciences', 'education', 'people', 'community', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation', 'graduation'])
     # print tf, loc

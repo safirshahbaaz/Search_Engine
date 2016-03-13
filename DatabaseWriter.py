@@ -21,6 +21,9 @@ class DatabaseWriter(object):
     def writeToForwardIndexDatabase(self, collection, url, contents):
         collection.insert_one({'url': url, 'contents': contents})
 
+    def writeAllToForwardIndexDatabase(self, collection, docs_array):
+        collection.insert_many(docs_array)
+
     def retrieveFromForwardIndexDatabase(self, collection, url):
         return collection.find({'url': url})
 
@@ -45,6 +48,9 @@ class DatabaseWriter(object):
 
     def writeToInvertedIndexDatabase(self, collection, word, contents):
         collection.insert_one({'word': word, 'contents': contents})
+
+    def writeAllToInvertedIndexDatabase(self, collection, docs_array):
+        collection.insert_many(docs_array)
 
     def retrieveFromInvertedIndexDatabase(self, collection, word):
         return collection.find({'word': word})
