@@ -5,6 +5,7 @@ import requests
 import json
 import config
 import re
+import math
 
 class QueryProcessor(object):
 
@@ -98,15 +99,15 @@ class NDCG(object):
 
 	def retrieve_google_results(self, query):
 		query = query.replace(" ", "+")
-		req = "https://www.googleapis.com/customsearch/v1?key=AIzaSyCvVv4pfYKUL9zm-6ig-SZVZi2kXGHz5Vo&cx=001842016066373955853:izbbrekr9t8&q="+query+"&filter=1&start=1&num=10&alt=json"
+		req = "https://www.googleapis.com/customsearch/v1?key=" + config.key + "&cx=" + config.cx + "&q=" +query+"&filter=1&start=1&num=10&alt=json"
 		r = requests.get(req)
 		content_dict = json.loads(r.content)
-		results_1 = [content_dict['items'][i]['link'] for i in xrange(10)]
+		results_1 = [content_dict['items'][i]['link'].rstrip("/").replace("https://", "http://") for i in xrange(10)]
 
-		req = "https://www.googleapis.com/customsearch/v1?key=AIzaSyCvVv4pfYKUL9zm-6ig-SZVZi2kXGHz5Vo&cx=001842016066373955853:izbbrekr9t8&q="+query+"&filter=1&start=11&num=10&alt=json"
+		req = "https://www.googleapis.com/customsearch/v1?key=" + config.key + "&cx=" + config.cx + "&q="+query+"&filter=1&start=11&num=10&alt=json"
 		r = requests.get(req)
 		content_dict = json.loads(r.content)
-		results_2 = [content_dict['items'][i]['link'] for i in xrange(10)]
+		results_2 = [content_dict['items'][i]['link'].rstrip("/").replace("https://", "http://") for i in xrange(10)]
 
 		results_1.extend(results_2)
 		final_results = []
@@ -118,13 +119,80 @@ class NDCG(object):
                 + "|rm|smil|wmv|swf|wma|zip|rar|gz|rss)$", result):
 				final_results.append(result)
 
-		for result in final_results:
-			print result
+		# for result in final_results:
+		# 	print result
 
 		return final_results
 
-	def calc_ndcg(self, google_results, local_results, k):
-		pass
+	def calc_ndcg(self, google_result, my_result, n):
+		google_score = []
+		my_score = []
+		google_cumul = []
+		my_cumul = []
+		for i in range(n):
+			google_score.append(n-i)    # google scores 5 4 3 2 1 or adjust like 5 4.5 4....
+			my_score.append(0)          # our scores initialized
+			google_cumul.append(0)      # google cumulative
+			my_cumul.append(0)          # our cumulative
+		for i in range(n):
+			if google_result[i] in my_result:
+				my_score[my_result.index(google_result[i])]= google_score[i]  #if match found assign corresponding score
+		for i in range(n):
+			if i == 0:
+				google_cumul[i] = google_score[i]     # assign cumulative scores google
+				my_cumul[i] = my_score[i]             # assign our cumul scores
+			else:
+				google_cumul[i] = google_cumul[i-1]+(google_score[i]/math.log(i+1,2))
+				my_cumul[i] = my_cumul[i-1]+(my_score[i]/math.log(i+1,2))
+		print "GoogleScore:     ",google_score
+		print "MyScore:         ",my_score
+		print "GoogleCumulative:",google_cumul
+		print "MyCumulative:    ",my_cumul
+		match = 0
+		Ndcg = []
+		for i in range(n):
+			###if abs(my_cumul[i]-google_cumul[i])<=1: match+=1   #number of near matches based on cumulative scores
+			Ndcg.append( my_cumul[i]/google_cumul[i])  # my cumulative/ google cumulative at each step
+		print "Ndcg:            ",Ndcg
+		print "Final quality:   ",Ndcg[-1] # closer to 1 is best
+
+	# def calc_ndcg(self, google_result, my_result, ng, nm):
+	# 	google_score = []
+	# 	my_score = []
+	# 	google_cumul = []
+	# 	my_cumul = []
+	#
+	# 	for i in range(ng):
+	# 		google_score.append(ng-i)    # google scores 5 4 3 2 1 or adjust like 5 4.5 4....
+	# 		# google_cumul.append(0)      # google cumulative
+	#
+	#
+	# 	for j in range(nm):
+	# 		my_score.append(0)          # our scores initialized
+	# 		my_cumul.append(0)          # our cumulative
+	#
+	# 	for i in range(ng):
+	# 		if google_result[i] in my_result:
+	# 			my_score[my_result.index(google_result[i])] = google_score[i]  #if match found assign corresponding score
+	#
+	# 	for i in range(nm):
+	# 		if i == 0:
+	# 			# google_cumul[i] = google_score[i]     # assign cumulative scores google
+	# 			my_cumul[i] = my_score[i]             # assign our cumul scores
+	# 		else:
+	# 			# google_cumul[i] = google_cumul[i-1]+(google_score[i]/math.log(i+1,2))
+	# 			my_cumul[i] = my_cumul[i-1]+(my_score[i]/math.log(i+1, 2))
+	#
+	# 	# calculate max possible google score
+	# 	google_max_score = ng
+	# 	for i in range(1, nm):
+	# 		google_max_score += (ng-i)/math.log(i+1,2)
+	#
+	# 	print "GoogleScore:     ",google_score
+	# 	print "MyScore:         ",my_score
+	# 	print "MyCumulative:    ",my_cumul
+	# 	print "Final quality:   ",my_cumul[-1]/google_max_score # closer to 1 is best
+
 
 
 
@@ -135,11 +203,13 @@ def runner(query):
 	result_lists =[]	
 	
 	query_tokens = qp.process_query(query)
+
+	'''Old Logic
 	
 	result_sets = ar.retrieve_results(query_tokens, "Important")
 	important_results = ranker.rank(result_sets)
 
-	# sort and add the important results separately 
+	# sort and add the important results separately
 	for result in sorted(important_results, key=important_results.get, reverse=True):
 		# print type(result)
 		result_lists.append(result)
@@ -154,20 +224,64 @@ def runner(query):
 			if result not in result_lists:
 				result_lists.append(result)
 
+	'''
+
+	# With combination
+	result_sets = ar.retrieve_results(query_tokens, "Important")
+	important_results = ranker.rank(result_sets)
+
+
+
+	if len(result_lists) < 10:
+		# fetch from InvertedIndexNormal
+		result_sets= ar.retrieve_results(query_tokens, "Normal")
+		normal_results = ranker.rank(result_sets)
+
+		# sort and add the important results separately
+		for result in important_results:
+			if result in normal_results:
+				# add the score from the normal results
+				important_results[result] = important_results.get(result) + normal_results.get(result)
+				# remove result from the normal results
+				normal_results.pop(result)
+
+		# add remaining results to important results
+		important_results.update(normal_results)
+
+	for result in sorted(important_results, key=important_results.get, reverse=True):
+		# print result, "-", important_results[result]
+		result_lists.append(result)
+
+
 
 	return result_lists
 
 if __name__ == '__main__':
-	query = "machine learning"
-	ans = runner(query)
 	ndcg = NDCG()
-	g_results = ndcg.retrieve_google_results(query)
+	queries = ['mondego', 'machine learning', 'software engineering', 'security', 'student affairs', 'graduate courses', 'crista lopes', 'rest', 'computer games', 'information retrieval']
+	# queries = ["information retrieval"]
 
-	# retr
+	for query in queries:
+		print "-----Query: ", query, "-----"
+		ans = runner(query)
 
-	# print("----------Results-------------")
-	# for result in ans:
-	# 	print(result)
+		# print("----------Our Results-------------")
+		# for result in ans:
+		# 	print(result)
+
+
+		# print("----------Google Results-------------")
+		g_results = ndcg.retrieve_google_results(query)
+
+		for i in range(10 - len(g_results)):
+			g_results.append("")
+
+		ndcg.calc_ndcg(g_results[0:5], ans[0:5], 5)
+
+	# ndcg.calc_ndcg([1 ,2, 3, 4, 5 ],[8, 7 ,31, 2 ,90],5) #google list, our list, list length
+	# ndcg.calc_ndcg([1 ,2, 3, 4, 5 ,6,7, 8, 9, 10],[1, 2, 3 ,4, 0],10, 5) #google list, our list, list length
+
+
 	
 
 
