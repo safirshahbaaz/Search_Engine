@@ -1,4 +1,7 @@
 from pymongo import *
+import config
+
+_SHOW_DEBUG_TRACE = True
 
 class DatabaseWriter(object):
 
@@ -8,7 +11,7 @@ class DatabaseWriter(object):
         self.client = MongoClient()
 
     def accessDatabase(self, database_name = 'default'):
-        return self.client['Index']
+        return self.client[config.db_name]
 
     ''' Forward Index Database Manipulation functions '''
 
@@ -18,11 +21,14 @@ class DatabaseWriter(object):
     def writeToForwardIndexDatabase(self, collection, url, contents):
         collection.insert_one({'url': url, 'contents': contents})
 
+    def writeAllToForwardIndexDatabase(self, collection, docs_array):
+        collection.insert_many(docs_array)
+
     def retrieveFromForwardIndexDatabase(self, collection, url):
         return collection.find({'url': url})
 
     def retrieveAllFromForwardIndexDatabase(self, collection):
-        return collection.find()    
+        return collection.find(no_cursor_timeout=True)    
 
     def deleteFromForwardIndexDatabase(self, collection, url):
         collection.delete_many({'url': url})
@@ -43,14 +49,34 @@ class DatabaseWriter(object):
     def writeToInvertedIndexDatabase(self, collection, word, contents):
         collection.insert_one({'word': word, 'contents': contents})
 
+    def writeAllToInvertedIndexDatabase(self, collection, docs_array):
+        collection.insert_many(docs_array)
+
     def retrieveFromInvertedIndexDatabase(self, collection, word):
         return collection.find({'word': word})
 
     def retrieveAllFromInvertedIndexDatabase(self, collection):
-        return collection.find()  
+        return collection.find(no_cursor_timeout=True)  
 
     def deleteFromInvertedIndexDatabase(self, collection, word):
         collection.delete_many({'word': word})
+
+    def addToBulkWriter(self, bulk_writer, word, contents, tf_idf_update = False):
+
+        if tf_idf_update == False:
+            bulk_writer.find({'word': word}).upsert().update({'$addToSet': {'contents': contents}})
+        else:
+            bulk_writer.find({'word': word}).replace_one({'word': word, 'contents': contents})
+
+    def updateBulkContentToDatabase(self, bulk_writer):
+        try:
+            result = bulk_writer.execute()
+
+            if _SHOW_DEBUG_TRACE:
+                # print result
+                print("Writing records to DB")
+        except Exception as e:
+            print type(e).__name__ + "Error occurred while writing to the database"
 
     def updateInvertedIndexDatabase(self, collection, word, contents):
         collection.update_one({'word': word}, {"$set": {"contents": contents}})

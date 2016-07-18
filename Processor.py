@@ -10,13 +10,12 @@ import string
 import unicodedata
 from collections import namedtuple
 import DatabaseWriter as dw
-
+from nltk.stem.porter import PorterStemmer
+stemmer = PorterStemmer()
 stop_words = stopwords.words("english")
 
-filepath = "./tempfiles/"
-
-#Shelve files delclaration
-all_info = shelve.open('all_info.shelve', writeback=True)
+# filepath = "./tempfiles/"
+filepath = "./backup/run2/"
 
 class Processor(object):
     """
@@ -24,9 +23,11 @@ class Processor(object):
     """
 
     def __init__(self):
+        self.frwd_index_temp = []
         self.client = dw.DatabaseWriter()
         self.database = self.client.accessDatabase()
         self.frwd_index_table = self.client.accessForwardIndexCollection(self.database)
+
 
     def process_file(self):
         """
@@ -49,6 +50,7 @@ class Processor(object):
                                 self.store_content(url, important_tokens, normal_tokens, links)
                             try:
                                 url = line.split("--")[6]
+                                url = url.replace("https://", "http://")
                             except Exception as e:
                                 print("could not extract page")
 
@@ -116,32 +118,32 @@ class Processor(object):
             # to handle cases if the tile is blank
             if "none" in title.lower():
                 title = ""
-            # print self.tokenizer_2(title)
-            important_tokens.extend(self.tokenizer_2(title))
+            # print self.tokenizer(title)
+            important_tokens.extend(self.tokenizer(title))
         except Exception as e:
             # print(type(e).__name__ + ": Could not extract title")
             pass
 
         try:
             h1 = [str(h.string) for h in soup.find_all('h1') if h.string is not None]
-            # print self.tokenizer_2(' '.join(h1))
-            important_tokens.extend(self.tokenizer_2(h1))
+            # print self.tokenizer(' '.join(h1))
+            important_tokens.extend(self.tokenizer(h1))
         except Exception as e:
             # print(type(e).__name__ + ": Could not extract h1")
             pass
 
         try:
             h2 = [str(h.string) for h in soup.find_all('h2') if h.string is not None]
-            # print self.tokenizer_2(' '.join(h2))
-            important_tokens.extend(self.tokenizer_2(h2))
+            # print self.tokenizer(' '.join(h2))
+            important_tokens.extend(self.tokenizer(h2))
         except Exception as e:
             # print(type(e).__name__ + ": Could not extract h2")
             pass
 
         try:
             h3 = [str(h.string) for h in soup.find_all('h3') if h.string is not None]
-            # print self.tokenizer_2(' '.join(h3))
-            important_tokens.extend(self.tokenizer_2(h3))
+            # print self.tokenizer(' '.join(h3))
+            important_tokens.extend(self.tokenizer(h3))
         except Exception as e:
             # print(type(e).__name__ + ": Could not extract h3")
             pass
@@ -159,8 +161,8 @@ class Processor(object):
                     # '''Some links only have a title'''
                     # if a.has_attr('title'): 
                     #     link_title = a.get('title').encode('utf-8', 'ignore')
-                    link_text_tokens = self.tokenizer_2(link_text)
-                    # print self.tokenizer_2(link_title)
+                    link_text_tokens = self.tokenizer(link_text)
+                    # print self.tokenizer(link_title)
                     ''' Storing in a tuple (url, [tokenized list of url text])'''
                     link_info = (abs_link, link_text_tokens)
                     links.append(link_info)
@@ -174,7 +176,7 @@ class Processor(object):
             body_text = soup.get_text()
             body_text = unicodedata.normalize('NFKD', body_text).encode('ascii', 'ignore')
             # print(''.join(body_text))
-            normal_tokens.extend(self.tokenizer_2(body_text))
+            normal_tokens.extend(self.tokenizer(body_text))
         except Exception as e:
             # print(type(e).__name__ + ": Could not extract body text")
             pass
@@ -200,11 +202,11 @@ class Processor(object):
             if line.strip() != "":
                 if len(line.strip().split()) < 30:
                     title = line
-                    important_tokens.extend(self.tokenizer_2(title))
+                    important_tokens.extend(self.tokenizer(title))
                 # print(important_tokens)
                 break
             i += 1
-        normal_tokens.extend(self.tokenizer_2(' '.join(content_lines[i:])))  # we will consider the lines after the title extraction, just a way to remove title
+        normal_tokens.extend(self.tokenizer(' '.join(content_lines[i:])))  # we will consider the lines after the title extraction, just a way to remove title
         return important_tokens, normal_tokens
 
     def store_content(self, url, important, normal, links):
@@ -215,7 +217,10 @@ class Processor(object):
         # all_info[url] = important, normal, links, referral_count
         # all_info.sync()
         info_tuple = important, normal, links, referral_count
-        self.client.writeToForwardIndexDatabase(self.frwd_index_table, url, info_tuple)
+        self.frwd_index_temp.append({'url': url, 'contents': info_tuple})
+
+    def write_to_db(self):
+        self.client.writeAllToForwardIndexDatabase(self.frwd_index_table, self.frwd_index_temp)
 
     def clean_tokens(self, tklist):
         """
@@ -226,80 +231,7 @@ class Processor(object):
         tklist = [tk for tk in tklist if tk.isalnum() and "\\x" not in tk]
         return tklist
 
-    # def tokenizer(self, data):
-    #     """
-
-    #     :param data:
-    #     :return:
-    #     """
-    #     parts = data.split()
-    #     token_list = []
-    #     for word in parts:
-    #         if word.isalnum():  # alphanumeric words
-    #             word = word.lower()
-    #             token_list.append(word)
-    #         else:
-    #             # for ch in [',','?','"','.(',".'",'(',')',";",'[',']','....','...','..','/','<','>']:
-    #             for ch in [',', '?', '"', '.(', ".'", '(', ')', ";", '[', ']', '<', '>']:  # escape these characters
-    #                 if ch in word:
-    #                     word = word.replace(ch, '')
-    #             # ---------------------------------------------------------------------------------------
-    #             if word.isalnum():  # alphanumeric after escape characters?
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif word[:-1].isalnum():  # ignoring lagging symbols
-    #                 word = word[:-1].lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif word[1:].isalnum():  # ignoring leading symbols
-    #                 word = word[1:].lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif re.match('\W*$', word):  # filter just-symbol words
-    #                 continue
-    #             # ---------------------------------------------------------------------------------------
-    #             elif (word.endswith("'s") or word.endswith("'t") or word.endswith("'d")) and word[
-    #                                                                                          :-2].isalnum():  # child's , couldn't  etc
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif (word.lower().startswith("i'") or word.lower().startswith("we'")) and word.replace("'",
-    #                                                                                                     "").isalnum():  # i've , we've
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif re.match("[a-zA-Z0-9]+(-|&|:)+[a-zA-Z0-9]+$", word):  # home-security AT&T
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif not word:
-    #                 continue  # filter non-words
-    #             # ---------------------------------------------------------------------------------------
-    #             elif re.match('^(http\:\/\/|https\:\/\/)?([a-zA-Z0-9][a-zA-Z0-9\-@]*\.)+[a-zA-Z0-9][a-zA-Z0-9\-]*$',
-    #                           word):  # IP addresses, domain-names
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif word.replace("-", "").replace(":", "").isalnum() and word[0].isalnum() and word[
-    #                 -1].isalnum():  # state-of-the-art
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif re.match("(?:[a-zA-Z]\.)+", word):  # Abbreviations U.S.A.
-    #                 word = word.lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             elif re.match("[a-zA-Z0-9]+(-|&|:)+[a-zA-Z0-9]+$", word[:-1]):  # home-security. AT&T.
-    #                 # print word
-    #                 word = word[:-1].lower()
-    #                 token_list.append(word)
-    #             # ---------------------------------------------------------------------------------------
-    #             else:
-    #                 pass
-    #     return token_list
-
-    def tokenizer_2(self, content):
+    def tokenizer(self, content):
         """
         Function to read a input file, tokenize it and return the token list
         :param file_name:
@@ -317,7 +249,16 @@ class Processor(object):
         # convert the content to lower case to make it case insensitive
         content = content.lower()
 
-        token_list = [word for word in content.split() if word not in stop_words]
+        token_list = []
+        for word in content.split():
+            if word.isalpha():
+                if word not in stop_words:
+                    # if the word ends with 's then remove it
+                    if word.endswith("'s"):
+                        word = word[:-2]
+                    word = stemmer.stem(word).encode('utf-8', errors='ignore')
+                    token_list.append(word)
+
 
         # storing the token count in a class variable
         # self.token_count = len(token_list)
@@ -328,3 +269,4 @@ class Processor(object):
 if __name__ == '__main__':
     p = Processor()
     p.process_file()
+    p.write_to_db()

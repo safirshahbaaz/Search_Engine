@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Search Results</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="row">
+        <div class="col-md-3"></div>
+        <div class="col-md-6">
+            <table class="table"></table>
+                <ul id="navigation" class="list-group">
+                {% for item in name %}
+                    <li class="list-group-item"><a href="{{ item }}">{{item}}</a></li>
+                {% endfor %}
+                </ul>
+            </table>
+        </div>
+        <div class="col-md-3"></div>
+        </div>
+</body>
+</html>

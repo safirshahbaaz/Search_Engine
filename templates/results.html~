@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Search Results</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="row">
+        <div class="col-md-4">
+            <table class="table"></table>
+                <ul id="navigation">
+                {% for item in name %}
+                    <li><a href="{{ item }}">{{item}}</a></li>
+                {% endfor %}
+                </ul>
+            <table>
+        </div>
+        <div class="col-md-4"></div>
+        <div class="col-md-4"></div>
+</body>
+</html>

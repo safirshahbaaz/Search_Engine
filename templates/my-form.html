@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Golden Retrievers</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="row vertical-center-row">
+        <div class="col-md-4"></div>
+        <div class="col-md-4">
+			<br><br><br><br>
+            <img src="{{ url_for('static',filename='styles/GRimg.png') }}" style="width:500px;height:80px;">
+            <form action="{{ url_for('my_form_post') }}" method="POST">
+                <input type="text" name="text" class="form-control" placeholder="Enter Query" style="width: 500px"> <br>
+                <input class="center-block btn btn-default" type="submit" value="Search">
+            </form>
+        </div>
+        <div class="col-md-4"></div>
+    </div>
+</body>
+</html>
